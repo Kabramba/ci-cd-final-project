@@ -1,14 +1,22 @@
-# CI/CD Tools and Practices Final Project Template
+# CI/CD Tools and Practices Final Project
 
-This repository contains the template to be used for the Final Project for the Coursera course **CI/CD Tools and Practices**.
+**Project name:** `ci-cd-final-project`
 
-## Usage
+This repository contains my Final Project for the Coursera course **CI/CD Tools and Practices**. It is a Python Flask hit-counter microservice with a complete CI/CD pipeline:
 
-This repository is to be used as a template to create your own repository in your own GitHub account. No need to Fork it as it has been set up as a Template. This will avoid confusion when making Pull Requests in the future.
+- **Continuous Integration (GitHub Actions):** `.github/workflows/workflow.yml` lints the code with **flake8** and runs the unit tests with **nose** on every push and pull request to `main`.
+- **Continuous Delivery (Tekton on OpenShift):** `.tekton/tasks.yml` defines the `cleanup` and `nose` tasks; `.tekton/pipeline.yml` runs cleanup, git-clone, flake8, nose, buildah and deploy (openshift-client) to build the image and deploy the service to OpenShift on port 8000.
 
-From the GitHub **Code** page, press the green **Use this template** button to create your own repository from this template.
+## Project details
 
-Name your repo: `ci-cd-final-project`.
+| Item | Value |
+|---|---|
+| Project name | ci-cd-final-project |
+| Course | CI/CD Tools and Practices (IBM, Coursera) |
+| Application | Hit Counter Service (Python 3.9, Flask, gunicorn) |
+| Service port | 8000 |
+| CI | GitHub Actions: flake8 lint, nose unit tests |
+| CD | Tekton / OpenShift Pipelines |
 
 ## Setup
 
@@ -24,15 +32,12 @@ Then you must exit the shell and start a new one for the Python virtual environm
 exit
 ```
 
-## Tasks
-
-
 ## License
 
 Licensed under the Apache License. See [LICENSE](/LICENSE)
 
 ## Author
 
-Skills Network
+Kabir Raval ([Kabramba](https://github.com/Kabramba)), based on the template by Skills Network
 
 ## <h3 align="center"> © IBM Corporation 2023. All rights reserved. <h3/>

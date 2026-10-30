@@ -1,0 +1,98 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  description: This task will clean up a workspace by deleting all of the files.
+  workspaces:
+    - name: source
+  steps:
+    - name: remove
+      image: alpine:3
+      env:
+        - name: WORKSPACE_SOURCE_PATH
+          value: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
+        # Delete any existing contents of the directory if it exists.
+        #
+        # We don't just "rm -rf ${WORKSPACE_SOURCE_PATH}" because ${WORKSPACE_SOURCE_PATH} might be "/"
+        # or the root of a mounted volume.
+        if [ -d "${WORKSPACE_SOURCE_PATH}" ] ; then
+          # Delete non-hidden files and directories
+          rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
+          # Delete files and directories starting with . but excluding ..
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
+          # Delete files and directories starting with .. plus any other character
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
+        fi
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: nose
+spec:
+  description: This task will run nosetests on the provided input.
+  params:
+    - name: args
+      description: Arguments to pass to nose
+      type: string
+      default: "-v"
+  workspaces:
+    - name: source
+  steps:
+    - name: nosetests
+      image: python:3.9-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+
+        echo "***** Environment *****"
+        python --version
+        pwd
+
+        echo "***** Installing dependencies *****"
+        python -m pip install --upgrade pip wheel
+        pip install -r requirements.txt
+
+        echo "***** Running nosetests with: $(params.args)"
+        nosetests $(params.args)
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: flake8
+spec:
+  description: This task will lint the source code with flake8.
+  params:
+    - name: image
+      description: The Python image to run flake8 in
+      type: string
+      default: "python:3.9-slim"
+    - name: args
+      description: Arguments to pass to flake8
+      type: string
+      default: "--count --max-complexity=10 --max-line-length=127 --statistics"
+  workspaces:
+    - name: source
+  steps:
+    - name: flake8
+      image: $(params.image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        python -m pip install --upgrade pip
+        pip install flake8==4.0.1
+        echo "***** Running flake8 with: $(params.args)"
+        flake8 service $(params.args)
