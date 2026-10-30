@@ -71,7 +71,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: flake8
+  name: flake8-lint
 spec:
   description: This task will lint the source code with flake8.
   params:

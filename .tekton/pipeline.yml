@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ci-cd-pipeline
+spec:
+  workspaces:
+    - name: pipeline-workspace
+  params:
+    - name: repo-url
+      description: The repository to clone
+      default: "https://github.com/Kabramba/ci-cd-final-project.git"
+    - name: branch
+      description: The branch to build
+      default: "main"
+    - name: app-name
+      description: The name of the deployment and image
+      default: "cicd-app"
+  tasks:
+    - name: cleanup
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: cleanup
+
+    - name: git-clone
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
+      runAfter:
+        - cleanup
+
+    - name: flake8
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: flake8-lint
+      params:
+        - name: args
+          value: "--count --max-complexity=10 --max-line-length=127 --statistics"
+      runAfter:
+        - git-clone
+
+    - name: nose
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: nose
+      params:
+        - name: args
+          value: "-v --with-spec --spec-color"
+      runAfter:
+        - flake8
+
+    - name: buildah
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      params:
+        - name: IMAGE
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.app-name):latest"
+      runAfter:
+        - nose
+
+    - name: deploy
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      params:
+        - name: SCRIPT
+          value: |
+            echo "Deploying $(params.app-name) from $(params.repo-url) ($(params.branch)) ..."
+            oc create deployment $(params.app-name) --image=image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.app-name):latest --dry-run=client -o yaml | oc apply -f -
+            oc rollout status deployment/$(params.app-name) --timeout=300s
+      runAfter:
+        - buildah

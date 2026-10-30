@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: ci-cd-pipeline-run-
+spec:
+  pipelineRef:
+    name: ci-cd-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/Kabramba/ci-cd-final-project.git"
+    - name: branch
+      value: "main"
+    - name: app-name
+      value: "cicd-app"
+  workspaces:
+    - name: pipeline-workspace
+      persistentVolumeClaim:
+        claimName: ci-cd-final-pvc
